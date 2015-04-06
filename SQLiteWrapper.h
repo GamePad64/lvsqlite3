@@ -16,53 +16,66 @@
 #ifndef SRC_SYNC_SQLITEWRAPPER_H_
 #define SRC_SYNC_SQLITEWRAPPER_H_
 #include <sqlite3.h>
+#include <boost/filesystem.hpp>
+#include <memory>
+#include <map>
 
 namespace librevault {
 
 class SQLValue {
 public:
-	enum ValueType {
+	enum class ValueType {
 		INT = SQLITE_INTEGER,
 		DOUBLE = SQLITE_FLOAT,
 		TEXT = SQLITE_TEXT,
 		BLOB = SQLITE_BLOB,
-		NULL = SQLITE_NULL
+		NULL_VALUE = SQLITE_NULL
 	};
 protected:
 	ValueType value_type;
 
-	std::vector<uint8_t> blob_val;
-	std::string text_val;
 	union {
 		int64_t int_val;
 		double double_val;
+		struct {
+			union {
+				const uint8_t* blob_val;
+				const char* text_val;
+			};
+			uint64_t size;
+		};
 	};
 public:
 	SQLValue();	// Binds NULL value;
 	SQLValue(int64_t int_val);	// Binds INT value;
 	SQLValue(double double_val);	// Binds DOUBLE value;
+
 	SQLValue(const std::string& text_val);	// Binds TEXT value;
+	SQLValue(const char* text_val, uint64_t blob_size);	// Binds TEXT value;
+
 	SQLValue(const std::vector<uint8_t>& blob_val);	// Binds BLOB value;
+	SQLValue(const uint8_t* blob_ptr, uint64_t blob_size);	// Binds BLOB value;
 
 	ValueType get_type(){return value_type;};
 
-	bool is_null() const {return value_type == ValueType::NULL;};
+	bool is_null() const {return value_type == ValueType::NULL_VALUE;};
 
 	operator bool() const {return is_null();}
 	operator int64_t() const {return int_val;};
 	operator double() const {return double_val;}
-	operator std::string&() const {return text_val;}
-	operator std::vector<uint8_t>&() const {return blob_val;}
+	operator std::string() const {return std::string(text_val, text_val+size);}
+	operator std::vector<uint8_t>() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
 };
 
 class SQLiteResultIterator : public std::iterator<std::input_iterator_tag, std::vector<SQLValue>> {
-	std::shared_ptr<sqlite3_stmt> sqlite_statement;
+	sqlite3_stmt* prepared_stmt = 0;
 	std::shared_ptr<int64_t> shared_idx;
 	std::shared_ptr<std::vector<std::string>> cols;
+	std::vector<SQLValue> result;
 	int64_t current_idx = 0;
 	int rescode = SQLITE_OK;
 public:
-	SQLiteResultIterator(std::shared_ptr<sqlite3_stmt> prepared_stmt, std::shared_ptr<int64_t> shared_idx, std::shared_ptr<std::vector<std::string>> cols, int rescode);
+	SQLiteResultIterator(sqlite3_stmt* prepared_stmt, std::shared_ptr<int64_t> shared_idx, std::shared_ptr<std::vector<std::string>> cols, int rescode);
 	SQLiteResultIterator(int rescode);
 
 	SQLiteResultIterator& operator++();
@@ -76,13 +89,15 @@ public:
 
 class SQLiteResult {
 	int rescode = SQLITE_OK;
-	std::mutex& db_mutex;
 
-	std::shared_ptr<sqlite3_stmt> sqlite_statement;
+	sqlite3_stmt* prepared_stmt = 0;
 	std::shared_ptr<int64_t> shared_idx;
 	std::shared_ptr<std::vector<std::string>> cols;
 public:
-	SQLiteResult(std::shared_ptr<sqlite3_stmt> prepared_stmt, std::mutex& db_mutex);
+	SQLiteResult(sqlite3_stmt* prepared_stmt);
+	virtual ~SQLiteResult();
+
+	void reset();
 
 	SQLiteResultIterator begin();
 	SQLiteResultIterator end();
@@ -92,31 +107,23 @@ public:
 	std::vector<std::string> column_names(){return *cols;};
 };
 
-class SQLiteDB{
-	std::mutex db_mutex;
+class SQLiteDB {
 	sqlite3* db = 0;
-	struct BindValue {
-		const char* param_name;
-		SQLValue param_value;
-	};
 public:
 	SQLiteDB(){};
 	SQLiteDB(const boost::filesystem::path& db_path);
 	SQLiteDB(const char* db_path);
+	virtual ~SQLiteDB();
 
 	void open(const boost::filesystem::path& db_path);
 	void open(const char* db_path);
-
-	template<BindValue ... Values>
-	SQLiteResult exec(const std::string& sql, Values...){
-		std::vector<BindValue> values = {Values...};
-		exec(sql, values);
-	}
-	SQLiteResult exec(const std::string& sql, std::vector<BindValue> values);
-
 	void close();
 
-	virtual ~SQLiteDB();
+	sqlite3* sqlite3_handle(){return db;};
+
+	SQLiteResult exec(const std::string& sql, std::map<std::string, SQLValue> values = std::map<std::string, SQLValue>());
+
+	int64_t last_insert_rowid();
 };
 
 } /* namespace librevault */
