@@ -155,7 +155,7 @@ SQLiteResult SQLiteDB::exec(const std::string& sql, std::map<std::string, SQLVal
 	int sql_err_code = 0;
 
 	sqlite3_stmt* sqlite_stmt;
-	sql_err_code = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.size(), &sqlite_stmt, 0);
+	sql_err_code = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.size()+1, &sqlite_stmt, 0);
 
 	for(auto value : values){
 		switch(value.second.get_type()){
@@ -166,16 +166,22 @@ SQLiteResult SQLiteDB::exec(const std::string& sql, std::map<std::string, SQLVal
 			sqlite3_bind_double(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()), (double)value.second);
 			break;
 		case SQLValue::ValueType::TEXT:
+		{
+			auto text_data = value.second.as_text();
 			sqlite3_bind_text(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
-					((std::string&)value.second).data(),
-					(int)((std::string&)value.second).size(),	// TODO use sqlite3_bind_text64
+					text_data.data(),
+					text_data.size(),	// TODO use sqlite3_bind_text64
 					SQLITE_TRANSIENT);
+		}
 			break;
 		case SQLValue::ValueType::BLOB:
+		{
+			auto blob_data = value.second.as_blob();
 			sqlite3_bind_blob(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
-					((std::vector<uint8_t>&)value.second).data(),
-					(int)((std::vector<uint8_t>&)value.second).size(),	// TODO use sqlite3_bind_blob64
+					blob_data.data(),
+					blob_data.size(),	// TODO use sqlite3_bind_blob64
 					SQLITE_TRANSIENT);
+		}
 			break;
 		case SQLValue::ValueType::NULL_VALUE:
 			sqlite3_bind_null(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()));

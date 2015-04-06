@@ -59,6 +59,10 @@ public:
 	ValueType get_type(){return value_type;};
 
 	bool is_null() const {return value_type == ValueType::NULL_VALUE;};
+	int64_t as_int() const {return int_val;}
+	double as_double() const {return double_val;}
+	std::string as_text() const {return std::string(text_val, text_val+size);}
+	std::vector<uint8_t> as_blob() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
 
 	operator bool() const {return is_null();}
 	operator int64_t() const {return int_val;};
