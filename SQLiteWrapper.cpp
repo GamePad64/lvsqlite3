@@ -104,21 +104,20 @@ SQLiteResult::SQLiteResult(sqlite3_stmt* prepared_stmt) : prepared_stmt(prepared
 			(*cols)[col_idx] = sqlite3_column_name(prepared_stmt, col_idx);
 		}
 	}else{
-		reset();
+		finalize();
 	}
 }
 
 SQLiteResult::~SQLiteResult(){
-	reset();
+	finalize();
 }
 
-void SQLiteResult::reset(){
+void SQLiteResult::finalize(){
 	sqlite3_finalize(prepared_stmt);
 	prepared_stmt = 0;
 }
 
 SQLiteResultIterator SQLiteResult::begin() {
-	shared_idx = std::make_shared<int64_t>();
 	return SQLiteResultIterator(prepared_stmt, shared_idx, cols, rescode);
 }
 

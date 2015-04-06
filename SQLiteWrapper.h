@@ -101,7 +101,7 @@ public:
 	SQLiteResult(sqlite3_stmt* prepared_stmt);
 	virtual ~SQLiteResult();
 
-	void reset();
+	void finalize();
 
 	SQLiteResultIterator begin();
 	SQLiteResultIterator end();
