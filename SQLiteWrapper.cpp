@@ -94,14 +94,14 @@ SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() {
 
 // SQLiteResult
 SQLiteResult::SQLiteResult(sqlite3_stmt* prepared_stmt) : prepared_stmt(prepared_stmt) {
-	shared_idx = std::make_shared<int64_t>();
-	*shared_idx = 0;
 	rescode = sqlite3_step(prepared_stmt);
 	if(have_rows()){
+		shared_idx = std::make_shared<int64_t>();
+		*shared_idx = 0;
 		auto total_cols = sqlite3_column_count(prepared_stmt);
 		cols = std::make_shared<std::vector<std::string>>(total_cols);
 		for(int col_idx = 0; col_idx < total_cols; col_idx++){
-			(*cols)[col_idx] = sqlite3_column_name(prepared_stmt, col_idx);
+			cols->at(col_idx) = sqlite3_column_name(prepared_stmt, col_idx);
 		}
 	}else{
 		finalize();
