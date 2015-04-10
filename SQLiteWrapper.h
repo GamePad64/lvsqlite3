@@ -55,6 +55,7 @@ public:
 
 	SQLValue(const std::vector<uint8_t>& blob_val);	// Binds BLOB value;
 	SQLValue(const uint8_t* blob_ptr, uint64_t blob_size);	// Binds BLOB value;
+	template<uint64_t array_size> SQLValue(std::array<uint8_t, array_size> blob_array) : SQLValue(blob_array.data(), blob_array.size()){}
 
 	ValueType get_type(){return value_type;};
 
@@ -63,6 +64,10 @@ public:
 	double as_double() const {return double_val;}
 	std::string as_text() const {return std::string(text_val, text_val+size);}
 	std::vector<uint8_t> as_blob() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
+	template<uint64_t array_size> std::array<uint8_t, array_size> as_blob() const {
+		std::array<uint8_t, array_size> new_array; std::copy(blob_val, blob_val+std::min(size, array_size), new_array.data());
+		return new_array;
+	}
 
 	operator bool() const {return is_null();}
 	operator int64_t() const {return int_val;};
