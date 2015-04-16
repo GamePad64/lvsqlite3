@@ -91,7 +91,10 @@ public:
 	SQLiteResultIterator operator++(int);
 	bool operator==(const SQLiteResultIterator& lvalue);
 	bool operator!=(const SQLiteResultIterator& lvalue);
-	value_type& operator*();
+	value_type& operator*() const;
+	value_type* operator->() const;
+
+	SQLValue operator[](size_t pos) const;
 
 	int result_code() const {return rescode;};
 };

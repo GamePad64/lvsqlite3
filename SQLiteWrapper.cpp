@@ -34,6 +34,33 @@ SQLiteResultIterator::SQLiteResultIterator(sqlite3_stmt* prepared_stmt,
 		std::shared_ptr<std::vector<std::string>> cols,
 		int rescode) : prepared_stmt(prepared_stmt), shared_idx(shared_idx), cols(cols), rescode(rescode) {
 	current_idx = *shared_idx;
+
+	if(rescode == SQLITE_ROW){
+		result.reserve(cols->size());
+		for(auto iCol = 0; iCol < cols->size(); iCol++){
+			switch((SQLValue::ValueType)sqlite3_column_type(prepared_stmt, iCol)){
+			case SQLValue::ValueType::INT:
+				result.push_back(SQLValue((int64_t)sqlite3_column_int64(prepared_stmt, iCol)));
+				break;
+			case SQLValue::ValueType::DOUBLE:
+				result.push_back(SQLValue((double)sqlite3_column_double(prepared_stmt, iCol)));
+				break;
+			case SQLValue::ValueType::TEXT:
+				result.push_back(SQLValue(std::string((const char*)sqlite3_column_text(prepared_stmt, iCol))));
+				break;
+			case SQLValue::ValueType::BLOB:
+			{
+				const uint8_t* blob_ptr = (const uint8_t*)sqlite3_column_blob(prepared_stmt, iCol);
+				auto blob_size = sqlite3_column_bytes(prepared_stmt, iCol);
+				result.push_back(SQLValue(std::vector<uint8_t>(blob_ptr, blob_ptr+blob_size)));
+			}
+				break;
+			case SQLValue::ValueType::NULL_VALUE:
+				result.push_back(SQLValue());
+				break;
+			}
+		}
+	}
 }
 
 SQLiteResultIterator::SQLiteResultIterator(int rescode) : rescode(rescode){}
@@ -64,42 +91,27 @@ bool SQLiteResultIterator::operator!=(const SQLiteResultIterator& lvalue) {
 	return false;
 }
 
-SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() {
-	result.reserve(cols->size());
-	for(auto iCol = 0; iCol < cols->size(); iCol++){
-		switch((SQLValue::ValueType)sqlite3_column_type(prepared_stmt, iCol)){
-		case SQLValue::ValueType::INT:
-			result.push_back(SQLValue((int64_t)sqlite3_column_int64(prepared_stmt, iCol)));
-			break;
-		case SQLValue::ValueType::DOUBLE:
-			result.push_back(SQLValue((double)sqlite3_column_double(prepared_stmt, iCol)));
-			break;
-		case SQLValue::ValueType::TEXT:
-			result.push_back(SQLValue(std::string((const char*)sqlite3_column_text(prepared_stmt, iCol))));
-			break;
-		case SQLValue::ValueType::BLOB:
-		{
-			const uint8_t* blob_ptr = (const uint8_t*)sqlite3_column_blob(prepared_stmt, iCol);
-			auto blob_size = sqlite3_column_bytes(prepared_stmt, iCol);
-			result.push_back(SQLValue(std::vector<uint8_t>(blob_ptr, blob_ptr+blob_size)));
-		}
-			break;
-		case SQLValue::ValueType::NULL_VALUE:
-			result.push_back(SQLValue());
-			break;
-		}
-	}
+SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() const {
 	return result;
+}
+
+SQLiteResultIterator::value_type* SQLiteResultIterator::operator->() const {
+	return &result;
+}
+
+SQLValue SQLiteResultIterator::operator[](size_t pos) const {
+	return result[pos];
 }
 
 // SQLiteResult
 SQLiteResult::SQLiteResult(sqlite3_stmt* prepared_stmt) : prepared_stmt(prepared_stmt) {
 	rescode = sqlite3_step(prepared_stmt);
+	shared_idx = std::make_shared<int64_t>();
+	*shared_idx = 0;
+	cols = std::make_shared<std::vector<std::string>>(0);
 	if(have_rows()){
-		shared_idx = std::make_shared<int64_t>();
-		*shared_idx = 0;
 		auto total_cols = sqlite3_column_count(prepared_stmt);
-		cols = std::make_shared<std::vector<std::string>>(total_cols);
+		cols->resize(total_cols);
 		for(int col_idx = 0; col_idx < total_cols; col_idx++){
 			cols->at(col_idx) = sqlite3_column_name(prepared_stmt, col_idx);
 		}
