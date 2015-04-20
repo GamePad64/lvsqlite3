@@ -69,11 +69,14 @@ public:
 		return new_array;
 	}
 
-	operator bool() const {return is_null();}
+	operator bool() const {return !is_null();}
 	operator int64_t() const {return int_val;};
 	operator double() const {return double_val;}
 	operator std::string() const {return std::string(text_val, text_val+size);}
 	operator std::vector<uint8_t>() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
+	template<uint64_t array_size> operator std::array<uint8_t, array_size>() const {
+		return as_blob<array_size>();
+	}
 };
 
 class SQLiteResultIterator : public std::iterator<std::input_iterator_tag, std::vector<SQLValue>> {
@@ -91,8 +94,8 @@ public:
 	SQLiteResultIterator operator++(int);
 	bool operator==(const SQLiteResultIterator& lvalue);
 	bool operator!=(const SQLiteResultIterator& lvalue);
-	value_type& operator*() const;
-	value_type* operator->() const;
+	const value_type& operator*() const;
+	const value_type* operator->() const;
 
 	SQLValue operator[](size_t pos) const;
 

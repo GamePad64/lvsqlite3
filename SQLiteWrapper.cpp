@@ -91,11 +91,11 @@ bool SQLiteResultIterator::operator!=(const SQLiteResultIterator& lvalue) {
 	return false;
 }
 
-SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() const {
+const SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() const {
 	return result;
 }
 
-SQLiteResultIterator::value_type* SQLiteResultIterator::operator->() const {
+const SQLiteResultIterator::value_type* SQLiteResultIterator::operator->() const {
 	return &result;
 }
 
