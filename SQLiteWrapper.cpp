@@ -83,12 +83,12 @@ bool SQLiteResultIterator::operator==(const SQLiteResultIterator& lvalue) {
 }
 
 bool SQLiteResultIterator::operator!=(const SQLiteResultIterator& lvalue) {
-	if(lvalue.result_code() == SQLITE_DONE && (result_code() == SQLITE_DONE || result_code() == SQLITE_OK)){
-		return true;
+	if((lvalue.result_code() == SQLITE_DONE || lvalue.result_code() == SQLITE_OK) && (result_code() == SQLITE_DONE || result_code() == SQLITE_OK)){
+		return false;
 	}else if(prepared_stmt == lvalue.prepared_stmt && current_idx == lvalue.current_idx){
-		return true;
+		return false;
 	}
-	return false;
+	return true;
 }
 
 const SQLiteResultIterator::value_type& SQLiteResultIterator::operator*() const {
