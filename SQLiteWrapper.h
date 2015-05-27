@@ -48,6 +48,7 @@ protected:
 public:
 	SQLValue();	// Binds NULL value;
 	SQLValue(int64_t int_val);	// Binds INT value;
+	SQLValue(uint64_t int_val);	// Binds INT value;
 	SQLValue(double double_val);	// Binds DOUBLE value;
 
 	SQLValue(const std::string& text_val);	// Binds TEXT value;
@@ -61,6 +62,7 @@ public:
 
 	bool is_null() const {return value_type == ValueType::NULL_VALUE;};
 	int64_t as_int() const {return int_val;}
+	uint64_t as_uint() const {return (uint64_t)int_val;}
 	double as_double() const {return double_val;}
 	std::string as_text() const {return std::string(text_val, text_val+size);}
 	std::vector<uint8_t> as_blob() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
@@ -71,6 +73,7 @@ public:
 
 	operator bool() const {return !is_null();}
 	operator int64_t() const {return int_val;};
+	operator uint64_t() const {return (uint64_t)int_val;};
 	operator double() const {return double_val;}
 	operator std::string() const {return std::string(text_val, text_val+size);}
 	operator std::vector<uint8_t>() const {return std::vector<uint8_t>(blob_val, blob_val+size);}
@@ -139,6 +142,21 @@ public:
 	SQLiteResult exec(const std::string& sql, std::map<std::string, SQLValue> values = std::map<std::string, SQLValue>());
 
 	int64_t last_insert_rowid();
+};
+
+class SQLiteSavepoint {
+	const std::string name;
+	SQLiteDB* db;
+public:
+	SQLiteSavepoint(SQLiteDB* db, const std::string savepoint_name);
+	~SQLiteSavepoint();
+};
+
+class SQLiteLock {
+	SQLiteDB* db;
+public:
+	SQLiteLock(SQLiteDB* db);
+	~SQLiteLock();
 };
 
 } /* namespace librevault */

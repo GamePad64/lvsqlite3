@@ -20,6 +20,7 @@ namespace librevault {
 // SQLValue
 SQLValue::SQLValue() : value_type(ValueType::NULL_VALUE) {}
 SQLValue::SQLValue(int64_t int_val) : value_type(ValueType::INT), int_val(int_val) {}
+SQLValue::SQLValue(uint64_t int_val) : value_type(ValueType::INT), int_val((int64_t)int_val) {}
 SQLValue::SQLValue(double double_val) : value_type(ValueType::DOUBLE), double_val(double_val) {}
 
 SQLValue::SQLValue(const std::string& text_val) : value_type(ValueType::TEXT), text_val(text_val.data()), size(text_val.size()) {}
@@ -205,6 +206,20 @@ SQLiteResult SQLiteDB::exec(const std::string& sql, std::map<std::string, SQLVal
 
 int64_t SQLiteDB::last_insert_rowid(){
 	return sqlite3_last_insert_rowid(db);
+}
+
+SQLiteSavepoint::SQLiteSavepoint(SQLiteDB* db, const std::string savepoint_name) : db(db), name(savepoint_name) {
+	db->exec(std::string("SAVEPOINT ")+name);
+}
+SQLiteSavepoint::~SQLiteSavepoint(){
+	db->exec(std::string("RELEASE ")+name);
+}
+
+SQLiteLock::SQLiteLock(SQLiteDB* db) : db(db) {
+	sqlite3_mutex_enter(sqlite3_db_mutex(db->sqlite3_handle()));
+}
+SQLiteLock::~SQLiteLock(){
+	sqlite3_mutex_leave(sqlite3_db_mutex(db->sqlite3_handle()));
 }
 
 } /* namespace librevault */
