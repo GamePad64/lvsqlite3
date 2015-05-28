@@ -53,7 +53,7 @@ SQLiteResultIterator::SQLiteResultIterator(sqlite3_stmt* prepared_stmt,
 			{
 				const uint8_t* blob_ptr = (const uint8_t*)sqlite3_column_blob(prepared_stmt, iCol);
 				auto blob_size = sqlite3_column_bytes(prepared_stmt, iCol);
-				result.push_back(SQLValue(std::vector<uint8_t>(blob_ptr, blob_ptr+blob_size)));
+				result.push_back(SQLValue(blob_ptr, blob_size));
 			}
 				break;
 			case SQLValue::ValueType::NULL_VALUE:
