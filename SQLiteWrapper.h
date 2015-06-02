@@ -24,7 +24,7 @@ namespace librevault {
 
 class SQLValue {
 public:
-	enum class ValueType {
+	enum ValueType {
 		INT = SQLITE_INTEGER,
 		DOUBLE = SQLITE_FLOAT,
 		TEXT = SQLITE_TEXT,
@@ -38,11 +38,11 @@ protected:
 		int64_t int_val;
 		double double_val;
 		struct {
+			uint64_t size;
 			union {
 				const uint8_t* blob_val;
 				const char* text_val;
 			};
-			uint64_t size;
 		};
 	};
 public:
@@ -86,9 +86,12 @@ class SQLiteResultIterator : public std::iterator<std::input_iterator_tag, std::
 	sqlite3_stmt* prepared_stmt = 0;
 	std::shared_ptr<int64_t> shared_idx;
 	std::shared_ptr<std::vector<std::string>> cols;
-	std::vector<SQLValue> result;
 	int64_t current_idx = 0;
 	int rescode = SQLITE_OK;
+
+	mutable std::vector<SQLValue> result;
+
+	void fill_result() const;
 public:
 	SQLiteResultIterator(sqlite3_stmt* prepared_stmt, std::shared_ptr<int64_t> shared_idx, std::shared_ptr<std::vector<std::string>> cols, int rescode);
 	SQLiteResultIterator(int rescode);

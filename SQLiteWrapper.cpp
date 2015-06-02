@@ -36,40 +36,45 @@ SQLiteResultIterator::SQLiteResultIterator(sqlite3_stmt* prepared_stmt,
 		int rescode) : prepared_stmt(prepared_stmt), shared_idx(shared_idx), cols(cols), rescode(rescode) {
 	current_idx = *shared_idx;
 
-	if(rescode == SQLITE_ROW){
-		result.reserve(cols->size());
-		for(auto iCol = 0; iCol < cols->size(); iCol++){
-			switch((SQLValue::ValueType)sqlite3_column_type(prepared_stmt, iCol)){
-			case SQLValue::ValueType::INT:
-				result.push_back(SQLValue((int64_t)sqlite3_column_int64(prepared_stmt, iCol)));
-				break;
-			case SQLValue::ValueType::DOUBLE:
-				result.push_back(SQLValue((double)sqlite3_column_double(prepared_stmt, iCol)));
-				break;
-			case SQLValue::ValueType::TEXT:
-				result.push_back(SQLValue(std::string((const char*)sqlite3_column_text(prepared_stmt, iCol))));
-				break;
-			case SQLValue::ValueType::BLOB:
-			{
-				const uint8_t* blob_ptr = (const uint8_t*)sqlite3_column_blob(prepared_stmt, iCol);
-				auto blob_size = sqlite3_column_bytes(prepared_stmt, iCol);
-				result.push_back(SQLValue(blob_ptr, blob_size));
-			}
-				break;
-			case SQLValue::ValueType::NULL_VALUE:
-				result.push_back(SQLValue());
-				break;
-			}
-		}
-	}
+	fill_result();
 }
 
 SQLiteResultIterator::SQLiteResultIterator(int rescode) : rescode(rescode){}
+
+void SQLiteResultIterator::fill_result() const {
+	if(rescode != SQLITE_ROW) return;
+
+	result.resize(0);
+	result.reserve(cols->size());
+	for(auto iCol = 0; iCol < cols->size(); iCol++){
+		switch((SQLValue::ValueType)sqlite3_column_type(prepared_stmt, iCol)){
+		case SQLValue::ValueType::INT:
+			result.push_back(SQLValue((int64_t)sqlite3_column_int64(prepared_stmt, iCol)));
+			break;
+		case SQLValue::ValueType::DOUBLE:
+			result.push_back(SQLValue((double)sqlite3_column_double(prepared_stmt, iCol)));
+			break;
+		case SQLValue::ValueType::TEXT:
+			result.push_back(SQLValue(std::string((const char*)sqlite3_column_text(prepared_stmt, iCol))));
+			break;
+		case SQLValue::ValueType::BLOB: {
+			const uint8_t* blob_ptr = (const uint8_t*)sqlite3_column_blob(prepared_stmt, iCol);
+			auto blob_size = sqlite3_column_bytes(prepared_stmt, iCol);
+			result.push_back(SQLValue(blob_ptr, blob_size));
+		} break;
+		case SQLValue::ValueType::NULL_VALUE:
+			result.push_back(SQLValue());
+			break;
+		}
+	}
+}
 
 SQLiteResultIterator& SQLiteResultIterator::operator++() {
 	rescode = sqlite3_step(prepared_stmt);
 	(*shared_idx)++;
 	current_idx = *shared_idx;
+
+	fill_result();
 	return *this;
 }
 
@@ -172,29 +177,23 @@ SQLiteResult SQLiteDB::exec(const std::string& sql, std::map<std::string, SQLVal
 	for(auto value : values){
 		switch(value.second.get_type()){
 		case SQLValue::ValueType::INT:
-			sqlite3_bind_int64(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()), (int64_t)value.second);
+			sqlite3_bind_int64(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()), value.second.as_int());
 			break;
 		case SQLValue::ValueType::DOUBLE:
-			sqlite3_bind_double(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()), (double)value.second);
+			sqlite3_bind_double(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()), value.second.as_double());
 			break;
-		case SQLValue::ValueType::TEXT:
-		{
+		case SQLValue::ValueType::TEXT: {
 			auto text_data = value.second.as_text();
-			sqlite3_bind_text(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
-					text_data.data(),
-					text_data.size(),	// TODO use sqlite3_bind_text64
-					SQLITE_TRANSIENT);
-		}
-			break;
-		case SQLValue::ValueType::BLOB:
-		{
+			sqlite3_bind_text64(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
+					text_data.data(), text_data.size(),
+					SQLITE_TRANSIENT, SQLITE_UTF8);
+		} break;
+		case SQLValue::ValueType::BLOB: {
 			auto blob_data = value.second.as_blob();
-			sqlite3_bind_blob(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
-					blob_data.data(),
-					blob_data.size(),	// TODO use sqlite3_bind_blob64
+			sqlite3_bind_blob64(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()),
+					blob_data.data(), blob_data.size(),
 					SQLITE_TRANSIENT);
-		}
-			break;
+		} break;
 		case SQLValue::ValueType::NULL_VALUE:
 			sqlite3_bind_null(sqlite_stmt, sqlite3_bind_parameter_index(sqlite_stmt, value.first.c_str()));
 			break;
