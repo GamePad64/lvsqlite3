@@ -207,18 +207,24 @@ int64_t SQLiteDB::last_insert_rowid(){
 	return sqlite3_last_insert_rowid(db);
 }
 
-SQLiteSavepoint::SQLiteSavepoint(SQLiteDB* db, const std::string savepoint_name) : db(db), name(savepoint_name) {
+SQLiteSavepoint::SQLiteSavepoint(SQLiteDB& db, const std::string savepoint_name) : db(db), name(savepoint_name) {
+	db.exec(std::string("SAVEPOINT ")+name);
+}
+SQLiteSavepoint::SQLiteSavepoint(SQLiteDB* db, const std::string savepoint_name) : db(*db), name(savepoint_name) {
 	db->exec(std::string("SAVEPOINT ")+name);
 }
 SQLiteSavepoint::~SQLiteSavepoint(){
-	db->exec(std::string("RELEASE ")+name);
+	db.exec(std::string("RELEASE ")+name);
 }
 
-SQLiteLock::SQLiteLock(SQLiteDB* db) : db(db) {
+SQLiteLock::SQLiteLock(SQLiteDB& db) : db(db) {
+	sqlite3_mutex_enter(sqlite3_db_mutex(db.sqlite3_handle()));
+}
+SQLiteLock::SQLiteLock(SQLiteDB* db) : db(*db) {
 	sqlite3_mutex_enter(sqlite3_db_mutex(db->sqlite3_handle()));
 }
 SQLiteLock::~SQLiteLock(){
-	sqlite3_mutex_leave(sqlite3_db_mutex(db->sqlite3_handle()));
+	sqlite3_mutex_leave(sqlite3_db_mutex(db.sqlite3_handle()));
 }
 
 } /* namespace librevault */

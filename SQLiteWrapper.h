@@ -129,7 +129,6 @@ public:
 };
 
 class SQLiteDB {
-	sqlite3* db = 0;
 public:
 	SQLiteDB(){};
 	SQLiteDB(const boost::filesystem::path& db_path);
@@ -145,21 +144,27 @@ public:
 	SQLiteResult exec(const std::string& sql, std::map<std::string, SQLValue> values = std::map<std::string, SQLValue>());
 
 	int64_t last_insert_rowid();
+private:
+	sqlite3* db = 0;
 };
 
 class SQLiteSavepoint {
-	const std::string name;
-	SQLiteDB* db;
 public:
+	SQLiteSavepoint(SQLiteDB& db, const std::string savepoint_name);
 	SQLiteSavepoint(SQLiteDB* db, const std::string savepoint_name);
 	~SQLiteSavepoint();
+private:
+	SQLiteDB& db;
+	const std::string name;
 };
 
 class SQLiteLock {
-	SQLiteDB* db;
 public:
+	SQLiteLock(SQLiteDB& db);
 	SQLiteLock(SQLiteDB* db);
 	~SQLiteLock();
+private:
+	SQLiteDB& db;
 };
 
 } /* namespace librevault */
