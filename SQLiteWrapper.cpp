@@ -41,7 +41,7 @@ void SQLiteResultIterator::fill_result() const {
 
 	result.resize(0);
 	result.reserve(cols->size());
-	for(auto iCol = 0; iCol < cols->size(); iCol++){
+	for(unsigned iCol = 0; iCol < cols->size(); iCol++){
 		switch((SQLValue::ValueType)sqlite3_column_type(prepared_stmt, iCol)){
 		case SQLValue::ValueType::INT:
 			result.push_back(SQLValue((int64_t)sqlite3_column_int64(prepared_stmt, iCol)));
@@ -164,10 +164,8 @@ void SQLiteDB::close() {
 }
 
 SQLiteResult SQLiteDB::exec(const std::string& sql, std::map<std::string, SQLValue> values){
-	int sql_err_code = 0;
-
 	sqlite3_stmt* sqlite_stmt;
-	sql_err_code = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.size()+1, &sqlite_stmt, 0);
+	sqlite3_prepare_v2(db, sql.c_str(), (int)sql.size()+1, &sqlite_stmt, 0);
 
 	for(auto value : values){
 		switch(value.second.get_type()){

@@ -32,11 +32,11 @@ protected:
 		int64_t int_val;
 		double double_val;
 		struct {
-			uint64_t size;
 			union {
 				const uint8_t* blob_val;
 				const char* text_val;
 			};
+			uint64_t size;
 		};
 	};
 public:
